@@ -3,6 +3,7 @@ import sys
 import time
 from copy import deepcopy
 from datetime import datetime
+from subprocess import run
 
 import numpy as np
 import torch
@@ -12,11 +13,14 @@ from functions import (
     check_accuracy,
     count_parameters,
     end_timer_and_print,
+    finalize__tex_file,
+    init__tex_file,
     load_checkpoint,
     print__batch_info,
     produce_acc_plot,
     produce_and_print_confusion_matrix,
     produce_loss_plot,
+    run_pdflatex,
     save_checkpoint,
     start_timer,
 )
@@ -115,6 +119,10 @@ if __name__ == "__main__":
             torch.load("CNN-lr-0.0001-batch-size-64-20-06-2021-15:07.pth.tar")
         )
 
+    if args.tex__file_path is not None:
+        # Initialize TeX file:
+        init__tex_file(args.tex__file_path)
+
     # Train the network:
     start_timer(device=device)
     train_losses, val_losses, train_accs, val_accs = [], [], [], []
@@ -161,6 +169,7 @@ if __name__ == "__main__":
                 t_0=t0,
                 loss=loss,
                 mode="train",
+                tex__file_path=args.tex__file_path,
             )
 
         # validation stuff:
@@ -209,6 +218,7 @@ if __name__ == "__main__":
                     t_0=t0,
                     loss=cce_mean(val_output, val_labels).cpu().item(),
                     mode="val",
+                    tex__file_path=args.tex__file_path,
                 )
 
         train_losses.append(
@@ -230,6 +240,10 @@ if __name__ == "__main__":
     end_timer_and_print(
         device=device, local_msg=f"Training {args.num_epochs} epoch(s)"
     )
+    if args.tex__file_path is not None:
+        # finalize TeX file:
+        finalize__tex_file(args.tex__file_path)
+        run_pdflatex(args.tex__file_path)
 
     # save checkpoint
     save_checkpoint(

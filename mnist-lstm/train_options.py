@@ -85,4 +85,10 @@ class TrainOptions:
             action="store_true",
             help="Whether to use automatic mixed precision (AMP).",
         )
+        parser.add_argument(
+            "--tex__file_path",
+            type=str,
+            default=None,
+            help="File path of the LaTeX file.",
+        )
         self.args = parser.parse_args()

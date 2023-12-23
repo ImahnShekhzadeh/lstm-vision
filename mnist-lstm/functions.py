@@ -1,6 +1,8 @@
 import gc
 import os
+import sys
 from datetime import datetime
+from subprocess import run
 from time import perf_counter
 
 import matplotlib.pyplot as plt
@@ -66,8 +68,27 @@ def format_line(
     percentage: float,
     loss: Tensor,
     runtime: float,
+    context: str = "cli",
 ) -> None:
+    """
+    Format line for printing.
+
+    Args:
+        mode: Mode in which the model is in. Either "train" or "val".
+        epoch: Current epoch.
+        current_samples: Current number of samples.
+        total_samples: Total number of samples.
+        percentage: Percentage of samples that have been processed.
+        loss: Loss of the current batch.
+        runtime: Runtime of the current batch.
+        context: Context in which the function is called. Either "cli" or
+            "tex". If "tex", the line will be formatted for LaTeX.
+    """
     assert mode.lower() in ["train", "val"]
+    assert context in ["cli", "tex"]
+
+    # use different percentage symbols based on context
+    percent_symbol = "\\\\%" if context == "latex" else "%"
 
     # calculate maximum width for each part
     max_epoch_width = len(f"{mode.capitalize()} epoch: {epoch}")
@@ -95,6 +116,7 @@ def print__batch_info(
     t_0: float,
     loss: Tensor,
     frequency: int = 1,
+    tex__file_path: str | None = None,
 ) -> None:
     """
     Print the current batch information.
@@ -107,6 +129,8 @@ def print__batch_info(
         t_0: Time at which the training started.
         loss: Loss of the current batch.
         frequency: Frequency at which to print the batch info.
+        tex__file_path: LaTeX file path. If provided, the batch info will be
+            appended to the tex file.
     """
     assert mode.lower() in ["train", "val"]
     assert type(frequency) == int
@@ -121,16 +145,83 @@ def print__batch_info(
         prog_perc = 100 * current_samples / total_samples
         runtime = perf_counter() - t_0
 
-        formatted_line = format_line(
-            mode=mode,
-            epoch=epoch,
-            current_samples=current_samples,
-            total_samples=total_samples,
-            percentage=prog_perc,
-            loss=loss,
-            runtime=runtime,
+        format_args = {
+            "mode": mode,
+            "epoch": epoch,
+            "current_samples": current_samples,
+            "total_samples": total_samples,
+            "percentage": prog_perc,
+            "loss": loss,
+            "runtime": runtime,
+        }
+        formatted_line = format_line(**format_args | {"context": "cli"})
+        print(formatted_line)
+
+        if tex__file_path is not None:
+            formatted_line = format_line(**format_args | {"context": "tex"})
+            append__to_tex_file(formatted_line, tex__file_path)
+
+
+def init__tex_file(tex__file_path: str) -> None:
+    """
+    Initialize the tex file.
+
+    Args:
+        tex__file_path (str): Path to the tex file.
+    """
+
+    with open(tex__file_path, "w") as f:
+        f.write(
+            "\\documentclass{article}\n"
+            "\\usepackage{booktabs}\n"
+            "\\usepackage{graphicx}\n"
+            "\\usepackage{float}\n"
+            "\\usepackage{subcaption}\n"
+            "\\usepackage{geometry}\n"
+            "\\geometry{a4paper, portrait, margin=1in}\n"
+            "\\begin{document}\n"
         )
-        print(f"{formatted_line}")
+
+
+def append__to_tex_file(formatted_line: str, tex__file_path: str) -> None:
+    """
+    Append a line to the tex file.
+
+    Args:
+        formatted_line (str): Formatted line to append to the tex file.
+        tex__file_path (str): Path to the tex file.
+    """
+
+    with open(tex__file_path, "a") as f:
+        # '\\\\' is for a new line in LaTeX
+        f.write(formatted_line + "\\\\n")
+
+
+def finalize__tex_file(tex__file_path: str) -> None:
+    """
+    Finalize the tex file.
+
+    Args:
+        tex__file_path (str): Path to the tex file.
+    """
+
+    with open(tex__file_path, "a") as f:
+        f.write("\\end{document}")
+
+
+def run_pdflatex(tex_file_path: str) -> None:
+    """
+    Runs the pdflatex command on the specified .tex file.
+
+    Args:
+        tex_file_path: The path to the `.tex` file to be processed.
+    """
+
+    out_dir = os.path.dirname(tex_file_path)
+
+    return run(
+        ["/usr/bin/pdflatex", "-output-directory", out_dir, tex_file_path]
+    )
 
 
 def load_checkpoint(model, optimizer, checkpoint):

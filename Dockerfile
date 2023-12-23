@@ -38,6 +38,10 @@ RUN conda install -y pytorch=2.1.* torchvision torchaudio pytorch-cuda=12.1 -c p
 #    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 RUN pip install --upgrade "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
+# Install LaTeX
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
+
 # Set the working directory
 WORKDIR /app
 

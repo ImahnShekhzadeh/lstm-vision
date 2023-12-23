@@ -8,3 +8,6 @@ MNIST
 
 # PyCache
 __pycache__
+
+# Output files
+out
